@@ -1,9 +1,8 @@
 /**
  *Submitted for verification at FtmScan.com on 2022-02-11
-*/
+ */
 
 // SPDX-License-Identifier: MIT AND AGPL-3.0-or-later
-
 
 // OpenZeppelin Contracts v4.4.1 (utils/Context.sol)
 
@@ -28,8 +27,6 @@ abstract contract Context {
         return msg.data;
     }
 }
-
-
 
 // OpenZeppelin Contracts v4.4.1 (token/ERC20/IERC20.sol)
 
@@ -56,7 +53,9 @@ interface IERC20 {
      *
      * Emits a {Transfer} event.
      */
-    function transfer(address recipient, uint256 amount) external returns (bool);
+    function transfer(address recipient, uint256 amount)
+        external
+        returns (bool);
 
     /**
      * @dev Returns the remaining number of tokens that `spender` will be
@@ -65,7 +64,10 @@ interface IERC20 {
      *
      * This value changes when {approve} or {transferFrom} are called.
      */
-    function allowance(address owner, address spender) external view returns (uint256);
+    function allowance(address owner, address spender)
+        external
+        view
+        returns (uint256);
 
     /**
      * @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
@@ -110,11 +112,12 @@ interface IERC20 {
      * @dev Emitted when the allowance of a `spender` for an `owner` is set by
      * a call to {approve}. `value` is the new allowance.
      */
-    event Approval(address indexed owner, address indexed spender, uint256 value);
+    event Approval(
+        address indexed owner,
+        address indexed spender,
+        uint256 value
+    );
 }
-
-
-
 
 // OpenZeppelin Contracts v4.4.1 (access/Ownable.sol)
 
@@ -137,7 +140,10 @@ pragma solidity ^0.8.0;
 abstract contract Ownable is Context {
     address private _owner;
 
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    event OwnershipTransferred(
+        address indexed previousOwner,
+        address indexed newOwner
+    );
 
     /**
      * @dev Initializes the contract setting the deployer as the initial owner.
@@ -177,7 +183,10 @@ abstract contract Ownable is Context {
      * Can only be called by the current owner.
      */
     function transferOwnership(address newOwner) public virtual onlyOwner {
-        require(newOwner != address(0), "Ownable: new owner is the zero address");
+        require(
+            newOwner != address(0),
+            "Ownable: new owner is the zero address"
+        );
         _transferOwnership(newOwner);
     }
 
@@ -191,7 +200,6 @@ abstract contract Ownable is Context {
         emit OwnershipTransferred(oldOwner, newOwner);
     }
 }
-
 
 pragma solidity 0.8.11;
 
@@ -217,19 +225,11 @@ contract Vesting is Ownable {
 
     uint256 internal constant _ONE_YEAR = 365 days;
 
-    /* ========== RADIAL ALLOCATION ========== */
+    /* ========== CRE8R ALLOCATION ========== */
 
-    // The Radial token
-    IERC20 public constant RDL = IERC20(0x79360aF49edd44F3000303ae212671ac94bB8ba7);
-
-    // Locker Farm allocation vested over {VESTING_DURATION} years
-    uint256 public constant LOCKER_ALLOCATION = 6_000_000 * 1 ether;
-
-    uint256 public constant TEAM_ALLOCATION = 15_000_000 * 1 ether;
-
-    address public constant DAO = 0x8c027C15D5aAd465DF025FAd90bfD3E20e465c19;
-
-    address public constant LP = 0x79d2DDAf5184Cfaff052d3c3af05A765A5a04cdE;
+    // The CRE8R token
+    IERC20 public constant CRE8R =
+        IERC20(0x2aD402655243203fcfa7dCB62F8A08cc2BA88ae0);
 
     /* ========== VESTING ========== */
 
@@ -248,43 +248,25 @@ contract Vesting is Ownable {
 
     /* ========== EVENTS ========== */
 
-    event VestingInitialized(uint256 duration);
-
-    event TeamVestingInitialized(uint256 duration);
-
     event VestingCreated(address user, uint256 amount);
 
     event Vested(address indexed from, uint256 amount);
 
     /* ========== STATE VARIABLES ========== */
 
-    // The start of the vesting period
-    uint256 public start;
-
-    // The end of the vesting period
-    uint256 public end;
-
     // The status of each vesting member (Vester)
     mapping(address => Vester) public vest;
-
-    // total amount vested for users
-    uint256 public total;
-
-    bool internal teamVestingInitialized;
 
     /* ========== CONSTRUCTOR ========== */
 
     /**
-     * @dev Initializes the Radial token address
+     * @dev Initializes the CRE8R token address
      *
      * Additionally, it transfers ownership to the Owner contract that needs to consequently
      * initiate the vesting period via {begin} after it mints the necessary amount to the contract.
      */
     constructor(address _admin) {
-        require(
-            _admin != _ZERO_ADDRESS,
-            "Misconfiguration"
-        );
+        require(_admin != _ZERO_ADDRESS, "Misconfiguration");
 
         transferOwnership(_admin);
     }
@@ -300,7 +282,6 @@ contract Vesting is Ownable {
     function getClaim(address _vester)
         external
         view
-        hasStarted
         returns (uint256 vestedAmount)
     {
         Vester memory vester = vest[_vester];
@@ -329,15 +310,9 @@ contract Vesting is Ownable {
     function claim() external returns (uint256 vestedAmount) {
         Vester memory vester = vest[msg.sender];
 
-        require(
-            vester.start != 0,
-            "Not Started"
-        );
+        require(vester.start != 0, "Not Started");
 
-        require(
-            vester.start < block.timestamp,
-            "Not Started Yet"
-        );
+        require(vester.start < block.timestamp, "Not Started Yet");
 
         vestedAmount = _getClaim(
             vester.amount,
@@ -355,120 +330,10 @@ contract Vesting is Ownable {
 
         emit Vested(msg.sender, vestedAmount);
 
-        RDL.transfer(msg.sender, vestedAmount);
+        CRE8R.transfer(msg.sender, vestedAmount);
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
-
-    /**
-     * @dev Allows the vesting period to be initiated.
-     *
-     * Emits a {VestingInitialized} event from which the start and
-     * end can be calculated via it's attached timestamp.
-     *
-     * Requirements:
-     *
-     * - the caller must be the owner
-     */
-    function begin(address[] memory vesters, uint192[] memory amounts)
-        external
-        onlyOwner
-    {
-        require(
-            vesters.length == amounts.length,
-            "Invalid Inputs"
-        );
-
-        uint256 _start = block.timestamp;
-        uint256 _end = _start + VESTING_DURATION;
-
-        start = _start;
-        end = _end;
-
-        uint256 _total = total;
-        for (uint256 i = 0; i < vesters.length; i++) {
-            require(
-                amounts[i] != 0,
-                "Incorrect Amount Specified"
-            );
-            require(
-                vesters[i] != _ZERO_ADDRESS,
-                "Zero Vester Address Specified"
-            );
-            require(
-                vest[vesters[i]].amount == 0,
-                "Duplicate Vester Entry Specified"
-            );
-            vest[vesters[i]] = Vester(
-                amounts[i],
-                0,
-                uint128(_start),
-                uint128(_end)
-            );
-            _total = _total + amounts[i];
-        }
-        require(
-            _total <= LOCKER_ALLOCATION,
-            "Invalid Vest Amounts Specified"
-        );
-
-        total = _total;
-
-        emit VestingInitialized(VESTING_DURATION);
-    }
-
-    function vestForTeam(address[] memory members, uint192[] memory amounts) 
-        external 
-        onlyOwner
-    {
-        require(
-            !teamVestingInitialized, 
-            "Team vesting started"
-        );
-        require(
-            members.length == amounts.length, 
-            "Invalid inputs"
-        );
-
-        uint256 _start = block.timestamp;
-        uint256 _end = _start + VESTING_DURATION;
-        uint256 _total = 0;
-
-        start = _start;
-        end = _end;
-
-        for(uint256 i=0; i < members.length; i++) {
-            require(
-                amounts[i] != 0,
-                "Incorrect Amount Specified"
-            );
-            require(
-                members[i] != _ZERO_ADDRESS,
-                "Zero Vester Address Specified"
-            );
-            require(
-                vest[members[i]].amount == 0,
-                "Duplicate Vester Entry Specified"
-            );
-
-            vest[members[i]] = Vester(
-                amounts[i],
-                0,
-                uint128(_start),
-                uint128(_end)
-            );
-            _total = _total + amounts[i];
-        }
-
-        require(
-            _total == TEAM_ALLOCATION,
-            "Invalid Vest Amounts Specified"
-        );
-
-        teamVestingInitialized = true;
-
-        emit TeamVestingInitialized(VESTING_DURATION);
-    }
 
     /**
      * @dev Adds a new vesting schedule to the contract.
@@ -476,26 +341,16 @@ contract Vesting is Ownable {
      * Requirements:
      * - Only {owner} can call.
      */
-    function vestFor(address user, uint256 amount)
-        external
-        onlyOwner
-        hasStarted
-    {
-        require(
-            amount <= type(uint192).max,
-            "Amount Overflows uint192"
-        );
-        require(
-            vest[user].amount == 0,
-            "Already a vester"
-        );
+    function vestFor(address user, uint256 amount) external onlyOwner {
+        require(amount <= type(uint192).max, "Amount Overflows uint192");
+        require(vest[user].amount == 0, "Already a vester");
         vest[user] = Vester(
             uint192(amount),
             0,
             uint128(block.timestamp),
             uint128(block.timestamp + VESTING_DURATION)
         );
-        RDL.transferFrom(msg.sender, address(this), amount);
+        CRE8R.transferFrom(msg.sender, address(this), amount);
 
         emit VestingCreated(user, amount);
     }
@@ -512,25 +367,5 @@ contract Vesting is Ownable {
         if (lastClaim == 0) lastClaim = _start;
 
         return (amount * (block.timestamp - lastClaim)) / (_end - lastClaim);
-    }
-
-    /**
-     * @dev Validates that the vesting period has started
-     */
-    function _hasStarted() private view {
-        require(
-            start != 0,
-            "Vesting hasn't started yet"
-        );
-    }
-
-    /* ========== MODIFIERS ========== */
-
-    /**
-     * @dev Throws if the vesting period hasn't started
-     */
-    modifier hasStarted() {
-        _hasStarted();
-        _;
     }
 }
