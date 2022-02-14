@@ -249,6 +249,7 @@ contract Vesting is Ownable {
     /* ========== EVENTS ========== */
 
     event VestingCreated(address user, uint256 amount);
+    event VestingCancelled(address user, uint256 amount);
 
     event Vested(address indexed from, uint256 amount);
 
@@ -353,6 +354,19 @@ contract Vesting is Ownable {
         CRE8R.transferFrom(msg.sender, address(this), amount);
 
         emit VestingCreated(user, amount);
+    }
+
+    function cancelVest(address user) external onlyOwner {
+        uint256 amount = vest[user].amount;
+        require(amount > 0, "Not a vester");
+        require(
+            CRE8R.balanceOf(address(this)) >= amount,
+            "Insufficient CRE8R balance"
+        );
+        delete vest[user];
+        CRE8R.transfer(msg.sender, amount);
+
+        emit VestingCancelled(user, amount);
     }
 
     /* ========== PRIVATE FUNCTIONS ========== */
