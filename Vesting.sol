@@ -219,6 +219,7 @@ pragma solidity 0.8.11;
  * it is supplied with the necessary amount of tokens to vest
  */
 contract Vesting is Ownable {
+    address public revokeTo;
     /* ========== CONSTANTS ========== */
 
     address internal constant _ZERO_ADDRESS = address(0);
@@ -247,6 +248,8 @@ contract Vesting is Ownable {
     }
 
     /* ========== EVENTS ========== */
+
+    event RevokeToUpdated(address oldAddress, address newAddress);
 
     event VestingCreated(address user, uint256 amount);
     event VestingCancelled(address user, uint256 amount);
@@ -357,6 +360,7 @@ contract Vesting is Ownable {
     }
 
     function cancelVest(address user) external onlyOwner {
+        require(revokeTo != address(0), "0 revoke to address");
         uint256 amount = vest[user].amount;
         require(amount > 0, "Not a vester");
         require(
@@ -364,9 +368,15 @@ contract Vesting is Ownable {
             "Insufficient CRE8R balance"
         );
         delete vest[user];
-        CRE8R.transfer(msg.sender, amount);
+        CRE8R.transfer(revokeTo, amount);
 
         emit VestingCancelled(user, amount);
+    }
+
+    function setRevokeTo(address _revokeTo) external onlyOwner {
+        require(_revokeTo != address(0), "0 address");
+        emit RevokeToUpdated(revokeTo, _revokeTo);
+        revokeTo = _revokeTo;
     }
 
     /* ========== PRIVATE FUNCTIONS ========== */
